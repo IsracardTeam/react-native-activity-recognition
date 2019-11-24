@@ -7,12 +7,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
-import android.support.annotation.Nullable;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.annotation.Nullable;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -21,6 +22,7 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.HeadlessJsTaskService;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -178,16 +180,29 @@ public class ActivityRecognizer implements ConnectionCallbacks, OnConnectionFail
     // Create key-value map with activity recognition result
     private void onUpdate(ArrayList<DetectedActivity> detectedActivities) {
         WritableMap params = Arguments.createMap();
+        HashMap<String, Integer> hashMap = new HashMap<String, Integer>();
+
         for (DetectedActivity activity : detectedActivities) {
             params.putInt(DetectionService.getActivityString(activity.getType()), activity.getConfidence());
+            hashMap.put(DetectionService.getActivityString(activity.getType()), activity.getConfidence());
         }
-        sendEvent("DetectedActivity", params);
+
+        sendEvent("DetectedActivity", params, hashMap);
     }
 
     // Send result back to JavaScript land
-    private void sendEvent(String eventName, @Nullable WritableMap params) {
+    private void sendEvent(String eventName, @Nullable WritableMap params, @Nullable HashMap<String, Integer> hashMap) {
         try {
+            // Send event to JS which is listening
             mReactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
+
+            // Also Send events through Headless JS (for background service)
+            Intent myIntent = new Intent(mReactContext, ActivityEventService.class);
+            myIntent.putExtra("map", hashMap);
+            
+            mReactContext.startService(myIntent);
+            HeadlessJsTaskService.acquireWakeLockNow(mReactContext);
+
         } catch (RuntimeException e) {
             Log.e(TAG, "java.lang.RuntimeException: Trying to invoke JS before CatalystInstance has been set!", e);
         }
@@ -195,7 +210,7 @@ public class ActivityRecognizer implements ConnectionCallbacks, OnConnectionFail
 
     // Listen to events broadcasted by the DetectionService
     public class ActivityDetectionBroadcastReceiver extends BroadcastReceiver {
-        protected static final String TAG = "ActivityDetectionBroadcastReceiver";
+        protected static final String TAG = "ActvityDtctionBReceiver";
 
         @Override
         public void onReceive(Context context, Intent intent) {
