@@ -30,6 +30,9 @@ public class DetectionService extends IntentService {
             Log.d(TAG, getActivityString(da.getType()) + " (" + da.getConfidence() + "%)");
         }
 
+        // We have a listener for this intent in ActivityRecognizer.java
+        // ActivityDetectionBroadcastReceiver
+        // This is what physically sends the data to our React Native listener
         Intent localIntent = new Intent(BROADCAST_ACTION);
         localIntent.putExtra(ACTIVITY_EXTRA, detectedActivities);
         LocalBroadcastManager.getInstance(this).sendBroadcast(localIntent);
