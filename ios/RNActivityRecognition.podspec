@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.source              = { :git => 'https://github.com/Aminoid/react-native-activity-recognition' }
   s.platform              = :ios, '9.0'
   s.ios.deployment_target = '9.0'
-  s.source_files        = 'ios/**/*.{h,m}'
+  s.source_files        = '**/*.{h,m}'
   s.exclude_files       = 'android/**/*'
   s.exclude_files       = 'example/**/*'
   s.dependency 'React'
